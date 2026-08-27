@@ -2,11 +2,10 @@ import streamlit as st
 import cv2
 import numpy as np
 import pytesseract
-import base64
 
-# -----------------------------------
+# ==========================================
 # CONFIGURACIÓN
-# -----------------------------------
+# ==========================================
 
 st.set_page_config(
     page_title="OCR Inteligente",
@@ -14,39 +13,74 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("📷 OCR Inteligente")
-st.write("Toma una foto y convierte automáticamente la imagen en texto.")
+# ==========================================
+# TÍTULO
+# ==========================================
 
-# -----------------------------------
-# BARRA LATERAL
-# -----------------------------------
+st.title("📷 OCR Inteligente")
+st.subheader("Reconocimiento de texto en imágenes")
+
+st.write(
+    "Carga una imagen desde tu computador o toma una fotografía "
+    "para reconocer automáticamente el texto."
+)
+
+# ==========================================
+# SIDEBAR
+# ==========================================
 
 with st.sidebar:
+
     st.header("⚙️ Configuración")
 
+    st.subheader("🎨 Procesamiento")
+
     filtro = st.radio(
-        "Aplicar filtro",
-        ("Con Filtro", "Sin Filtro")
+        "Selecciona el tipo de imagen:",
+        ["Sin filtro", "Escala de grises", "Blanco y negro"]
     )
+
+    st.subheader("🌎 Idioma")
 
     idioma = st.selectbox(
-        "Idioma del texto",
-        ("Español", "Inglés")
+        "Idioma del texto:",
+        ["Español", "Inglés"]
     )
 
-# -----------------------------------
-# CÁMARA
-# -----------------------------------
+# ==========================================
+# SELECCIÓN DE IMAGEN
+# ==========================================
 
-img_file_buffer = st.camera_input("📸 Toma una foto")
+st.header("📁 Seleccionar imagen")
 
-# -----------------------------------
+opcion = st.radio(
+    "¿Cómo quieres ingresar la imagen?",
+    ["📂 Cargar desde el PC", "📷 Tomar una foto"],
+    horizontal=True
+)
+
+img_file_buffer = None
+
+if opcion == "📂 Cargar desde el PC":
+
+    img_file_buffer = st.file_uploader(
+        "Selecciona una imagen",
+        type=["jpg", "jpeg", "png"]
+    )
+
+else:
+
+    img_file_buffer = st.camera_input(
+        "Toma una fotografía"
+    )
+
+# ==========================================
 # PROCESAMIENTO
-# -----------------------------------
+# ==========================================
 
 if img_file_buffer is not None:
 
-    # Leer imagen
+    # Leer archivo
     bytes_data = img_file_buffer.getvalue()
 
     cv2_img = cv2.imdecode(
@@ -54,185 +88,270 @@ if img_file_buffer is not None:
         cv2.IMREAD_COLOR
     )
 
-    # -----------------------------------
-    # APLICAR FILTRO
-    # -----------------------------------
+    # ==========================================
+    # MOSTRAR IMAGEN ORIGINAL
+    # ==========================================
 
-    if filtro == "Con Filtro":
+    st.header("🖼️ Imagen original")
 
-        # Convertir a escala de grises
-        gray = cv2.cvtColor(
-            cv2_img,
-            cv2.COLOR_BGR2GRAY
-        )
-
-        # Reducir ruido
-        gray = cv2.GaussianBlur(
-            gray,
-            (5, 5),
-            0
-        )
-
-        # Convertir a blanco y negro
-        cv2_img = cv2.threshold(
-            gray,
-            0,
-            255,
-            cv2.THRESH_BINARY + cv2.THRESH_OTSU
-        )[1]
-
-        imagen_mostrar = cv2_img
-
-    else:
-
-        imagen_mostrar = cv2.cvtColor(
-            cv2_img,
-            cv2.COLOR_BGR2RGB
-        )
-
-    # -----------------------------------
-    # MOSTRAR IMAGEN
-    # -----------------------------------
-
-    st.subheader("🖼️ Imagen procesada")
+    imagen_original = cv2.cvtColor(
+        cv2_img,
+        cv2.COLOR_BGR2RGB
+    )
 
     st.image(
-        imagen_mostrar,
-        caption="Imagen utilizada para el OCR",
+        imagen_original,
+        caption="Imagen cargada",
         use_container_width=True
     )
 
-    # -----------------------------------
-    # OCR
-    # -----------------------------------
+    # ==========================================
+    # BOTÓN PROCESAR
+    # ==========================================
 
-    if idioma == "Español":
-        idioma_tesseract = "spa"
-    else:
-        idioma_tesseract = "eng"
+    st.header("🔍 Reconocimiento")
 
-    try:
+    if st.button(
+        "🚀 Procesar imagen",
+        use_container_width=True
+    ):
 
-        text = pytesseract.image_to_string(
-            imagen_mostrar,
-            lang=idioma_tesseract
-        )
+        # --------------------------------------
+        # APLICAR FILTRO
+        # --------------------------------------
 
-    except Exception as e:
+        if filtro == "Sin filtro":
 
-        st.error("No se pudo ejecutar Tesseract.")
-        st.error(e)
-        text = ""
-
-    # -----------------------------------
-    # RESULTADO
-    # -----------------------------------
-
-    st.subheader("📝 Texto reconocido")
-
-    if text.strip():
-
-        st.text_area(
-            "Resultado:",
-            text,
-            height=200
-        )
-
-        # -----------------------------------
-        # ESTADÍSTICAS
-        # -----------------------------------
-
-        palabras = text.split()
-        caracteres = len(text)
-        lineas = len(text.splitlines())
-
-        st.subheader("📊 Estadísticas")
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.metric(
-                "Palabras",
-                len(palabras)
+            imagen_procesada = cv2.cvtColor(
+                cv2_img,
+                cv2.COLOR_BGR2RGB
             )
 
-        with col2:
-            st.metric(
-                "Caracteres",
-                caracteres
+        elif filtro == "Escala de grises":
+
+            imagen_procesada = cv2.cvtColor(
+                cv2_img,
+                cv2.COLOR_BGR2GRAY
             )
 
-        with col3:
-            st.metric(
-                "Líneas",
-                lineas
+        else:
+
+            gris = cv2.cvtColor(
+                cv2_img,
+                cv2.COLOR_BGR2GRAY
             )
 
-        # -----------------------------------
-        # DESCARGAR TEXTO
-        # -----------------------------------
+            imagen_procesada = cv2.threshold(
+                gris,
+                0,
+                255,
+                cv2.THRESH_BINARY + cv2.THRESH_OTSU
+            )[1]
 
-        st.subheader("💾 Guardar resultado")
+        # --------------------------------------
+        # MOSTRAR IMAGEN PROCESADA
+        # --------------------------------------
 
-        st.download_button(
-            label="📥 Descargar texto",
-            data=text,
-            file_name="texto_reconocido.txt",
-            mime="text/plain"
+        st.subheader("🎨 Imagen procesada")
+
+        st.image(
+            imagen_procesada,
+            caption=f"Filtro aplicado: {filtro}",
+            use_container_width=True
         )
 
-        # -----------------------------------
-        # LEER TEXTO EN VOZ ALTA
-        # -----------------------------------
+        # --------------------------------------
+        # IDIOMA
+        # --------------------------------------
 
-        st.subheader("🔊 Escuchar texto")
+        if idioma == "Español":
+            idioma_tesseract = "spa"
+        else:
+            idioma_tesseract = "eng"
 
-        texto_voz = text.replace("\n", " ")
+        # --------------------------------------
+        # OCR
+        # --------------------------------------
 
-        texto_voz = texto_voz.replace(
-            "'",
-            "\\'"
-        )
+        with st.spinner("🔎 Reconociendo texto..."):
 
-        html_audio = f"""
-        <script>
-        function hablar() {{
-            var texto = '{texto_voz}';
+            try:
 
-            var mensaje = new SpeechSynthesisUtterance(texto);
+                texto = pytesseract.image_to_string(
+                    imagen_procesada,
+                    lang=idioma_tesseract
+                )
 
-            mensaje.lang = 'es-ES';
+            except Exception as error:
 
-            window.speechSynthesis.speak(mensaje);
-        }}
-        </script>
+                st.error(
+                    "No se pudo ejecutar Tesseract."
+                )
 
-        <button onclick="hablar()"
-        style="
-        background-color:#ff4b4b;
-        color:white;
-        border:none;
-        padding:10px 20px;
-        border-radius:8px;
-        cursor:pointer;
-        font-size:16px;
-        ">
-        🔊 Leer texto
-        </button>
-        """
+                st.code(str(error))
 
-        st.components.v1.html(
-            html_audio,
-            height=60
-        )
+                texto = ""
 
-    else:
+        # ==========================================
+        # RESULTADO
+        # ==========================================
 
-        st.warning(
-            "⚠️ No se encontró texto. "
-            "Intenta tomar una foto con mejor iluminación."
-        )
+        st.header("📝 Resultado del OCR")
 
-    
+        if texto.strip():
+
+            st.text_area(
+                "Texto reconocido:",
+                texto,
+                height=250
+            )
+
+            # ==========================================
+            # ESTADÍSTICAS
+            # ==========================================
+
+            st.subheader("📊 Estadísticas")
+
+            palabras = texto.split()
+            caracteres = len(texto)
+            lineas = len(texto.splitlines())
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric(
+                    "Palabras",
+                    len(palabras)
+                )
+
+            with col2:
+                st.metric(
+                    "Caracteres",
+                    caracteres
+                )
+
+            with col3:
+                st.metric(
+                    "Líneas",
+                    lineas
+                )
+
+            # ==========================================
+            # BOTONES
+            # ==========================================
+
+            st.header("🛠️ Funciones adicionales")
+
+            col1, col2 = st.columns(2)
+
+            # ------------------------------------------
+            # DESCARGAR
+            # ------------------------------------------
+
+            with col1:
+
+                st.download_button(
+                    "📥 Descargar texto",
+                    data=texto,
+                    file_name="texto_reconocido.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+
+            # ------------------------------------------
+            # MOSTRAR INFORMACIÓN
+            # ------------------------------------------
+
+            with col2:
+
+                mostrar_info = st.button(
+                    "ℹ️ Información",
+                    use_container_width=True
+                )
+
+            if mostrar_info:
+
+                st.info(
+                    f"""
+                    **Información del reconocimiento**
+
+                    - Idioma: {idioma}
+                    - Filtro: {filtro}
+                    - Palabras encontradas: {len(palabras)}
+                    - Caracteres: {caracteres}
+                    """
+                )
+
+            # ==========================================
+            # LECTURA EN VOZ ALTA
+            # ==========================================
+
+            st.subheader("🔊 Lectura en voz alta")
+
+            texto_voz = texto.replace(
+                "\\",
+                "\\\\"
+            ).replace(
+                "'",
+                "\\'"
+            ).replace(
+                "\n",
+                " "
+            )
+
+            codigo_voz = f"""
+            <script>
+            function leerTexto() {{
+
+                var texto = '{texto_voz}';
+
+                var mensaje =
+                    new SpeechSynthesisUtterance(texto);
+
+                mensaje.lang = 'es-ES';
+
+                window.speechSynthesis.cancel();
+
+                window.speechSynthesis.speak(mensaje);
+            }}
+            </script>
+
+            <button
+                onclick="leerTexto()"
+                style="
+                    background-color:#4CAF50;
+                    color:white;
+                    border:none;
+                    padding:12px 25px;
+                    border-radius:8px;
+                    font-size:16px;
+                    cursor:pointer;
+                ">
+                🔊 Leer texto
+            </button>
+            """
+
+            st.components.v1.html(
+                codigo_voz,
+                height=60
+            )
+
+        else:
+
+            st.warning(
+                "⚠️ No se encontró texto en la imagen."
+            )
+
+            st.write(
+                "Intenta utilizar una imagen con buena iluminación "
+                "y texto claramente visible."
+            )
+
+else:
+
+    st.info(
+        "👆 Selecciona una imagen o toma una fotografía para comenzar."
+    )
+
 
 
